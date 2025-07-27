@@ -789,151 +789,199 @@
 
         // --- Funções de Carregamento de Arquivos ---
 
-        async function processFileData(fileData, fileName, isPrincipalList) {
-            let namesForTextarea = [];
+// Assumindo que estas variáveis globais (ou elementos DOM) estão definidas no seu escopo:
+// let mainCollaboratorsData;
+// const loadingIndicator = document.getElementById('loadingIndicator'); // Exemplo
+// const errorMessage = document.getElementById('errorMessage');       // Exemplo
+//
+// E a função normalizeName está definida, por exemplo:
+// function normalizeName(name) {
+//     return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+// }
 
-            if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-                const data = new Uint8Array(fileData);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
+async function processFileData(fileData, fileName, isPrincipalList) {
+    let namesForTextarea = [];
 
-                if (!isPrincipalList) { // Esta é a Lista de Colaboradores do Dia (Presença)
-                    const startRow = 14; // Linha 15 no Excel é índice 14
-                    const B_COL_INDEX = 1; // Coluna B tem índice 1 (0 para A, 1 para B, etc.)
-                    const range = XLSX.utils.decode_range(worksheet['!ref']);
-                    
-                    for (let R = startRow; R <= range.e.r; ++R) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: R, c: B_COL_INDEX });
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        const data = new Uint8Array(fileData);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        if (!isPrincipalList) { // Esta é a Lista de Colaboradores do Dia (Presença)
+            const B_COL_INDEX = 1; // Coluna B (índice 1)
+            const HEADER_ROW_INDEX = 14; // Linha 15 no Excel (índice 14) para o cabeçalho
+
+            let targetColIndex = -1; // Irá armazenar o índice da coluna "Usuário"
+            let dataStartRow = -1;   // Irá armazenar a linha de início dos dados
+
+            // 1. Tenta ler a célula B15 (HEADER_ROW_INDEX, B_COL_INDEX)
+            const cellB15Address = XLSX.utils.encode_cell({ r: HEADER_ROW_INDEX, c: B_COL_INDEX });
+            const cellB15 = worksheet[cellB15Address];
+
+            if (cellB15 && String(cellB15.v).trim().toLowerCase() === "usuário") {
+                // Se B15 é "Usuário", usa B15 como cabeçalho e começa a ler da linha 16 (índice 15)
+                targetColIndex = B_COL_INDEX;
+                dataStartRow = HEADER_ROW_INDEX + 1;
+            } else {
+                // Se B15 não é "Usuário", procura a coluna "Usuário" especificamente na LINHA 15
+                const range = XLSX.utils.decode_range(worksheet['!ref']);
+                let foundHeader = false;
+
+                // Percorre a LINHA 15 (HEADER_ROW_INDEX) para encontrar o cabeçalho "Usuário"
+                // Garante que a linha 15 está dentro do range da planilha
+                if (HEADER_ROW_INDEX <= range.e.r) {
+                    for (let C = range.s.c; C <= range.e.c; ++C) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: HEADER_ROW_INDEX, c: C });
                         const cell = worksheet[cellAddress];
-                        if (cell && cell.v) {
-                            namesForTextarea.push(String(cell.v).trim());
-                        } else if (!cell || !cell.v) {
-                            // Se encontrar uma célula vazia, para a leitura (assume fim da lista)
-                            break; 
+                        if (cell && String(cell.v).trim().toLowerCase() === "usuário") {
+                            targetColIndex = C; // Encontrou a coluna do cabeçalho "Usuário"
+                            dataStartRow = HEADER_ROW_INDEX + 1; // Começa a ler da próxima linha (linha 16)
+                            foundHeader = true;
+                            break;
                         }
                     }
+                }
 
-                    if (namesForTextarea.length === 0) {
-                        throw new Error("Nenhum nome encontrado a partir da célula B15 no arquivo Excel.");
+
+                if (!foundHeader) {
+                    throw new Error("Não foi possível encontrar a coluna 'Usuário' na linha 15 do arquivo Excel de presença.");
+                }
+            }
+
+            // Agora, com targetColIndex e dataStartRow definidos, lê os nomes
+            const range = XLSX.utils.decode_range(worksheet['!ref']); // Re-obtém o range
+            for (let R = dataStartRow; R <= range.e.r; ++R) {
+                const cellAddress = XLSX.utils.encode_cell({ r: R, c: targetColIndex });
+                const cell = worksheet[cellAddress];
+                if (cell && cell.v) {
+                    namesForTextarea.push(String(cell.v).trim());
+                } else if (!cell || !cell.v) {
+                    // Se encontrar uma célula vazia, para a leitura (assume fim da lista)
+                    break;
+                }
+            }
+
+            if (namesForTextarea.length === 0) {
+                throw new Error("Nenhum nome encontrado na coluna 'Usuário' do arquivo Excel.");
+            }
+
+        } else { // Esta é a Lista Principal de Colaboradores (Ativos)
+            const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            mainCollaboratorsData = [];
+
+            if (sheetData.length > 0) {
+                sheetData.forEach((row, index) => {
+                    // Pula a primeira linha se for o cabeçalho "Colaborador" e "Escala"
+                    if (index === 0 && (normalizeName(row[0]) === "colaborador" || normalizeName(row[0]) === "nome") && (normalizeName(row[1]) === "escala")) {
+                        return; // Pula esta linha (cabeçalho)
                     }
 
-                } else { // Esta é a Lista Principal de Colaboradores (Ativos)
-                    const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    mainCollaboratorsData = []; 
-                    
-                    if (sheetData.length > 0) {
-                        sheetData.forEach((row, index) => {
-                            // Pula a primeira linha se for o cabeçalho "Colaborador" e "Escala"
-                            if (index === 0 && (normalizeName(row[0]) === "colaborador" || normalizeName(row[0]) === "nome") && (normalizeName(row[1]) === "escala")) {
-                                return; // Pula esta linha (cabeçalho)
-                            }
-                            
-                            const originalName = row[0] ? String(row[0]).trim() : ''; 
-                            const scale = row[1] ? String(row[1]).trim() : 'N/A';
+                    const originalName = row[0] ? String(row[0]).trim() : '';
+                    const scale = row[1] ? String(row[1]).trim() : 'N/A';
 
-                            if (originalName) { 
-                                mainCollaboratorsData.push({
-                                    originalName: originalName,
-                                    normalizedName: normalizeName(originalName),
-                                    scale: scale
-                                });
-                            }
+                    if (originalName) {
+                        mainCollaboratorsData.push({
+                            originalName: originalName,
+                            normalizedName: normalizeName(originalName),
+                            scale: scale
                         });
                     }
-                    // Salva mainCollaboratorsData no LocalStorage
-                    localStorage.setItem('mainCollaboratorsData', JSON.stringify(mainCollaboratorsData));
-                    namesForTextarea = mainCollaboratorsData.map(item => item.originalName);
-                }
+                });
+            }
+            // Salva mainCollaboratorsData no LocalStorage
+            localStorage.setItem('mainCollaboratorsData', JSON.stringify(mainCollaboratorsData));
+            namesForTextarea = mainCollaboratorsData.map(item => item.originalName);
+        }
 
-            } else if (fileName.endsWith('.csv') || fileName.endsWith('.txt')) {
-                namesForTextarea = fileData.split('\n').map(name => name.trim()).filter(name => name !== '');
-                if (isPrincipalList) {
-                    mainCollaboratorsData = namesForTextarea.map(name => ({ originalName: name, normalizedName: normalizeName(name), scale: 'N/A' }));
-                    // Salva mainCollaboratorsData no LocalStorage
-                    localStorage.setItem('mainCollaboratorsData', JSON.stringify(mainCollaboratorsData));
+    } else if (fileName.endsWith('.csv') || fileName.endsWith('.txt')) {
+        namesForTextarea = fileData.split('\n').map(name => name.trim()).filter(name => name !== '');
+        if (isPrincipalList) {
+            mainCollaboratorsData = namesForTextarea.map(name => ({ originalName: name, normalizedName: normalizeName(name), scale: 'N/A' }));
+            // Salva mainCollaboratorsData no LocalStorage
+            localStorage.setItem('mainCollaboratorsData', JSON.stringify(mainCollaboratorsData));
+        }
+    } else {
+        throw new Error("Formato de arquivo não suportado dentro do ZIP. Os tipos suportados são .csv, .txt, .xlsx, .xls.");
+    }
+    return namesForTextarea;
+}
+
+async function handleFileUpload(event, textareaElement, spanElement, localStorageKey, isPrincipalList) {
+    const file = event.target.files[0];
+    if (!file) {
+        return;
+    }
+
+    spanElement.textContent = `Carregando ${file.name}...`;
+    loadingIndicator.style.display = "block";
+    errorMessage.style.display = "none"; // Limpa mensagens de erro anteriores
+
+    try {
+        if (file.name.endsWith('.zip')) {
+            if (isPrincipalList) {
+                throw new Error("A Lista Principal (Ativos) não suporta arquivos ZIP. Por favor, carregue um arquivo CSV, TXT ou Excel diretamente.");
+            }
+
+            const zip = await JSZip.loadAsync(file);
+            let foundFile = null;
+
+            // Procura pelo primeiro arquivo suportado na raiz do ZIP
+            zip.forEach((relativePath, zipEntry) => {
+                if (!zipEntry.dir && (relativePath.endsWith('.csv') || relativePath.endsWith('.txt') || relativePath.endsWith('.xlsx') || relativePath.endsWith('.xls'))) {
+                    if (!foundFile) { // Pega apenas o primeiro
+                        foundFile = zipEntry;
+                    }
                 }
+            });
+
+            if (!foundFile) {
+                throw new Error("Nenhum arquivo CSV, TXT ou Excel válido encontrado dentro do arquivo ZIP.");
+            }
+
+            let fileContent;
+            if (foundFile.name.endsWith('.xlsx') || foundFile.name.endsWith('.xls')) {
+                fileContent = await foundFile.async("arraybuffer");
             } else {
-                throw new Error("Formato de arquivo não suportado dentro do ZIP. Os tipos suportados são .csv, .txt, .xlsx, .xls.");
-            }
-            return namesForTextarea;
-        }
-
-        async function handleFileUpload(event, textareaElement, spanElement, localStorageKey, isPrincipalList) {
-            const file = event.target.files[0];
-            if (!file) {
-                return;
+                fileContent = await foundFile.async("text");
             }
 
-            spanElement.textContent = `Carregando ${file.name}...`;
-            loadingIndicator.style.display = "block";
-            errorMessage.style.display = "none"; // Limpa mensagens de erro anteriores
+            const names = await processFileData(fileContent, foundFile.name, isPrincipalList);
+            textareaElement.value = names.join('\n');
+            spanElement.textContent = `${file.name} (arquivo descompactado: ${foundFile.name})`;
+            localStorage.setItem(localStorageKey, names.join('\n'));
 
-            try {
-                if (file.name.endsWith('.zip')) {
-                    if (isPrincipalList) {
-                        throw new Error("A Lista Principal (Ativos) não suporta arquivos ZIP. Por favor, carregue um arquivo CSV, TXT ou Excel diretamente.");
-                    }
-
-                    const zip = await JSZip.loadAsync(file);
-                    let foundFile = null;
-
-                    // Procura pelo primeiro arquivo suportado na raiz do ZIP
-                    zip.forEach((relativePath, zipEntry) => {
-                        if (!zipEntry.dir && (relativePath.endsWith('.csv') || relativePath.endsWith('.txt') || relativePath.endsWith('.xlsx') || relativePath.endsWith('.xls'))) {
-                            if (!foundFile) { // Pega apenas o primeiro
-                                foundFile = zipEntry;
-                            }
-                        }
-                    });
-
-                    if (!foundFile) {
-                        throw new Error("Nenhum arquivo CSV, TXT ou Excel válido encontrado dentro do arquivo ZIP.");
-                    }
-
-                    let fileContent;
-                    if (foundFile.name.endsWith('.xlsx') || foundFile.name.endsWith('.xls')) {
-                        fileContent = await foundFile.async("arraybuffer");
-                    } else {
-                        fileContent = await foundFile.async("text");
-                    }
-
-                    const names = await processFileData(fileContent, foundFile.name, isPrincipalList);
-                    textareaElement.value = names.join('\n');
-                    spanElement.textContent = `${file.name} (arquivo descompactado: ${foundFile.name})`;
-                    localStorage.setItem(localStorageKey, names.join('\n'));
-
+        } else {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                let fileContent;
+                if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                    fileContent = e.target.result;
                 } else {
-                    const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        let fileContent;
-                        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                            fileContent = e.target.result;
-                        } else {
-                            fileContent = e.target.result;
-                        }
-                        const names = await processFileData(fileContent, file.name, isPrincipalList);
-                        textareaElement.value = names.join('\n');
-                        spanElement.textContent = file.name;
-                        localStorage.setItem(localStorageKey, names.join('\n'));
-                    };
-
-                    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                        reader.readAsArrayBuffer(file);
-                    } else {
-                        reader.readAsText(file);
-                    }
+                    fileContent = e.target.result;
                 }
-            } catch (error) {
-                errorMessage.textContent = `Erro ao carregar arquivo: ${error.message}`;
-                errorMessage.style.display = "block";
-                textareaElement.value = "";
-                spanElement.textContent = "Nenhum arquivo selecionado";
-                console.error("Erro no upload:", error);
-            } finally {
-                loadingIndicator.style.display = "none";
+                const names = await processFileData(fileContent, file.name, isPrincipalList);
+                textareaElement.value = names.join('\n');
+                spanElement.textContent = file.name;
+                localStorage.setItem(localStorageKey, names.join('\n'));
+            };
+
+            if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.readAsText(file);
             }
         }
+    } catch (error) {
+        errorMessage.textContent = `Erro ao carregar arquivo: ${error.message}`;
+        errorMessage.style.display = "block";
+        textareaElement.value = "";
+        spanElement.textContent = "Nenhum arquivo selecionado";
+        console.error("Erro no upload:", error);
+    } finally {
+        loadingIndicator.style.display = "none";
+    }
+}
 
 
         // --- Função Principal de Comparação ---
