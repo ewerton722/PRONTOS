@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRONTOS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Variáveis CSS para o tema padrão (inicial) */
+        :root {
+            --primary-color: #000000;
+            --primary-dark-color: #333333;
+            --secondary-color: #FFD700;
+            --secondary-dark-color: #CCAA00;
+            --accent-color: #DC3545;
+            --text-color: #333;
+            --light-text-color: #ffffff;
+            --background-color: #f0f0f0;
+            --card-background: #ffffff;
+            --border-color: #ced4da;
+            --error-color: #dc3545;
+            --header-bg: var(--primary-color);
+            --header-text: var(--light-text-color);
+
+            /* Para uso com rgba() */
+            --primary-color-rgb: 0,0,0;
+            --error-color-rgb: 220,53,69; /* RGB de #dc3545 */
+        }
+
+        /* Estilos base */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s;
+        }
+
+        header {
+            background-color: var(--header-bg);
+            color: var(--header-text);
+            padding: 20px 0;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        h1, h2 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 20px;
+            transition: color 0.3s;
+        }
+
+        h1 {
+            color: var(--header-text); /* Garante que o H1 no header tenha a cor do texto do header */
+        }
+
+        .results-section {
+            background-color: var(--card-background);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .results-list {
+            list-style: none;
+            padding: 0;
+            max-height: 500px; /* Mantém a altura máxima */
+            overflow-y: hidden; /* Oculta a barra de rolagem padrão, pois faremos a rolagem via JS */
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--background-color);
+            margin-top: 15px;
+            transition: background-color 0.3s;
+            font-size: 1.1em; /* Tamanho da fonte maior para a vitrine */
+            position: relative; /* Para posicionamento absoluto dos itens se necessário, mas principalmente para overflow */
+        }
+
+        .results-list li {
+            padding: 12px 15px; /* Mais padding para melhor visualização */
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .results-list li:last-child {
+            border-bottom: none;
+        }
+
+        .results-list li:nth-child(even) {
+            background-color: rgba(0, 0, 0, 0.03); /* Leve listrado */
+        }
+
+        .results-count {
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-top: 10px;
+            display: block;
+            text-align: center;
+        }
+
+        /* Estilo da mensagem de sucesso - Ajustado */
+        .success-message {
+            color: #28a745; /* Verde */
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+
+        .last-updated {
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 15px;
+        }
+
+        /* Temas Adicionais (reproduzindo os temas do index.html para consistência) */
+
+        /* Tema Escuro */
+        body.theme-dark {
+            --primary-color: #BB86FC; /* Roxo claro */
+            --primary-dark-color: #3700B3; /* Roxo escuro */
+            --secondary-color: #03DAC6; /* Ciano claro */
+            --secondary-dark-color: #018786; /* Ciano escuro */
+            --accent-color: #CF6679; /* Vermelho claro */
+            --text-color: #E0E0E0; /* Texto claro */
+            --light-text-color: #121212; /* Texto escuro para contrastar em elementos claros */
+            --background-color: #121212;
+            --card-background: #1E1E1E;
+            --border-color: #303030;
+            --error-color: #CF6679;
+            --header-bg: #212121;
+            --header-text: var(--text-color);
+            --primary-color-rgb: 187,134,252;
+            --error-color-rgb: 207,102,121;
+        }
+
+        /* Tema Azul */
+        body.theme-blue {
+            --primary-color: #2196F3; /* Azul */
+            --primary-dark-color: #1976D2;
+            --secondary-color: #FFC107; /* Amarelo */
+            --secondary-dark-color: #FFA000;
+            --accent-color: #F44336; /* Vermelho */
+            --text-color: #212121;
+            --light-text-color: #ffffff;
+            --background-color: #E3F2FD;
+            --card-background: #ffffff;
+            --border-color: #90CAF9;
+            --error-color: #F44336;
+            --header-bg: var(--primary-color);
+            --header-text: var(--light-text-color);
+            --primary-color-rgb: 33,150,243;
+            --error-color-rgb: 244,67,54;
+        }
+
+        /* Tema Verde */
+        body.theme-green {
+            --primary-color: #4CAF50; /* Verde */
+            --primary-dark-color: #388E3C;
+            --secondary-color: #FFEB3B; /* Amarelo claro */
+            --secondary-dark-color: #FBC02D;
+            --accent-color: #F44336; /* Vermelho */
+            --text-color: #212121;
+            --light-text-color: #ffffff;
+            --background-color: #E8F5E9;
+            --card-background: #ffffff;
+            --border-color: #A5D6A7;
+            --error-color: #F44336;
+            --header-bg: var(--primary-color);
+            --header-text: var(--light-text-color);
+            --primary-color-rgb: 76,175,80;
+            --error-color-rgb: 244,67,54;
+        }
+
+        /* Tema Personalizado */
+        body.theme-custom {
+            /* Cores serão injetadas via JS do localStorage */
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+            .results-list {
+                max-height: 400px; /* Ajusta altura para telas menores */
+            }
+            .results-list li {
+                padding: 10px;
+                font-size: 1em;
+            }
+            .success-message {
+                font-size: 1.1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PRONTOS</h1>
+    </header>
+
+    <div class="container">
+        <div class="results-section">
+            <h2><i class="fas fa-user-minus"></i> Colaboradores que ainda precisam realizar o teste de prontidão (<span id="missingCountSpan">0</span>)</h2>
+            <p id="lastUpdated" class="last-updated"></p>
+            <ul id="missingNamesList" class="results-list">
+                </ul>
+        </div>
+    </div>
+
+    <script>
+        const missingNamesList = document.getElementById('missingNamesList');
+        const missingCountSpan = document.getElementById('missingCountSpan');
+        const lastUpdatedSpan = document.getElementById('lastUpdated');
+        const root = document.documentElement; // O elemento <html>
+
+        let scrollInterval; // Variável para controlar o setInterval da rolagem antiga (agora será substituída)
+
+        // Variáveis para o novo ciclo de fala e rolagem
+        let currentAbsentCollaborators = []; // Guarda a lista de colaboradores ausentes para o ciclo de fala/rolagem
+        let speechAndScrollLoopIndex = 0; // Índice do nome atual no ciclo
+        let speechAndScrollLoopTimeout = null; // ID do timeout para controlar a execução
+        let currentSpokenUtterance = null; // Para controlar a fala atual e poder parar
+        let isSpeaking = false; // Flag para evitar que múltiplas falas se sobreponham
+
+        const initialDisplayTime = 5000; // Tempo em milissegundos para a lista ficar estática antes de rolar/falar (5 segundos)
+        const pauseAtEnd = 3000; // Tempo em milissegundos para pausar no final antes de retornar (3 segundos)
+
+        function applyTheme(themeName) {
+            document.body.className = ''; // Remove todas as classes de tema existentes
+            if (themeName && themeName !== 'default' && themeName !== 'custom') {
+                document.body.classList.add(`theme-${themeName}`);
+                resetToDefaultThemeProperties(); // Assegura que propriedades customizadas sejam resetadas
+            } else if (themeName === 'custom') {
+                document.body.classList.add('theme-custom'); // Adiciona uma classe custom para CSS se necessário
+                loadCustomColors(); // Carrega e aplica as cores personalizadas
+            } else { // default
+                resetToDefaultThemeProperties(); // Restaura as propriedades para o padrão
+            }
+            // Garante que o RGB do error-color seja atualizado para o tema atual (embora vitrine não mostre erros, é bom ter)
+            const currentErrorColor = getComputedStyle(document.body).getPropertyValue('--error-color').trim();
+            const hexToRgb = (hex) => {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return `${r},${g},${b}`;
+            };
+            root.style.setProperty('--error-color-rgb', hexToRgb(currentErrorColor.startsWith('#') ? currentErrorColor : '#dc3545')); // fallback
+        }
+
+        // Função para resetar as variáveis CSS para o tema padrão (inicial)
+        function resetToDefaultThemeProperties() {
+            root.style.setProperty('--primary-color', '#000000');
+            root.style.setProperty('--primary-dark-color', '#333333');
+            root.style.setProperty('--secondary-color', '#FFD700');
+            root.style.setProperty('--secondary-dark-color', '#CCAA00');
+            root.style.setProperty('--accent-color', '#DC3545');
+            root.style.setProperty('--text-color', '#333');
+            root.style.setProperty('--light-text-color', '#ffffff');
+            root.style.setProperty('--background-color', '#f0f0f0');
+            root.style.setProperty('--card-background', '#ffffff');
+            root.style.setProperty('--border-color', '#ced4da');
+            root.style.setProperty('--error-color', '#dc3545');
+            root.style.setProperty('--header-bg', 'var(--primary-color)');
+            root.style.setProperty('--header-text', 'var(--light-text-color)');
+            root.style.setProperty('--primary-color-rgb', '0,0,0');
+            root.style.setProperty('--error-color-rgb', '220,53,69');
+        }
+
+        function loadCustomColors() {
+            const savedColors = localStorage.getItem('customColors');
+            if (savedColors) {
+                const colors = JSON.parse(savedColors);
+                root.style.setProperty('--primary-color', colors.primary);
+                root.style.setProperty('--primary-dark-color', darkenColor(colors.primary, 20));
+                root.style.setProperty('--secondary-color', colors.secondary);
+                root.style.setProperty('--secondary-dark-color', darkenColor(colors.secondary, 20));
+                root.style.setProperty('--text-color', colors.text);
+                root.style.setProperty('--light-text-color', getContrastColor(colors.primary)); 
+                root.style.setProperty('--background-color', colors.background);
+                root.style.setProperty('--card-background', colors.card);
+                
+                const cardRgb = hexToRgb(colors.card);
+                const borderColor = rgbToHex(
+                    Math.max(0, cardRgb.r - 20),
+                    Math.max(0, cardRgb.g - 20),
+                    Math.max(0, cardRgb.b - 20)
+                );
+                root.style.setProperty('--border-color', borderColor); 
+
+                root.style.setProperty('--header-bg', colors.primary);
+                root.style.setProperty('--header-text', getContrastColor(colors.primary));
+                // Recalcular RGB para rgba()
+                const hexToRgbForCss = (hex) => {
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+                    return `${r},${g},${b}`;
+                };
+                root.style.setProperty('--primary-color-rgb', hexToRgbForCss(colors.primary));
+                root.style.setProperty('--error-color-rgb', hexToRgbForCss(document.body.className.includes('theme-') ? getComputedStyle(document.body).getPropertyValue('--error-color') : '#dc3545'));
+            }
+        }
+
+        // Funções auxiliares para cores (copiadas do index.html para consistência)
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return { r, g, b };
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+
+        function darkenColor(hex, percent) {
+            let { r, g, b } = hexToRgb(hex);
+            r = Math.max(0, r - (r * percent / 100));
+            g = Math.max(0, g - (g * percent / 100));
+            b = Math.max(0, b - (b * percent / 100));
+            return rgbToHex(r, g, b);
+        }
+
+        function getContrastColor(hex) {
+            const { r, g, b } = hexToRgb(hex);
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            return brightness > 128 ? '#333333' : '#ffffff';
+        }
+
+        // Nova função para falar texto
+        function speakText(textToSpeak, onEndCallback = null, rate = 1.0, pitch = 1.0) { // Adicionado rate e pitch
+            if (!'speechSynthesis' in window) {
+                console.warn("SpeechSynthesis API not supported in this browser.");
+                if (onEndCallback) onEndCallback();
+                return;
+            }
+
+            // Se já está falando, ou se uma nova fala é requisitada antes do fim da anterior, cancela.
+            if (isSpeaking && currentSpokenUtterance) {
+                 speechSynthesis.cancel();
+            }
+
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = 'pt-BR'; // Define o idioma para português do Brasil
+            utterance.rate = rate;   // Aplica a velocidade da fala
+            utterance.pitch = pitch; // Aplica o tom da fala
+
+            utterance.onstart = () => { isSpeaking = true; };
+            utterance.onend = () => {
+                isSpeaking = false;
+                if (onEndCallback) onEndCallback();
+            };
+            utterance.onerror = (event) => {
+                console.error('Erro na síntese de fala:', event);
+                isSpeaking = false;
+                if (onEndCallback) onEndCallback();
+            };
+
+            speechSynthesis.speak(utterance);
+            currentSpokenUtterance = utterance; // Mantém a referência para poder cancelar
+        }
+
+        // Função auxiliar para parar qualquer fala e loop de rolagem existente
+        function stopSpeechAndScrollLoop() {
+            if (speechAndScrollLoopTimeout) {
+                clearTimeout(speechAndScrollLoopTimeout);
+                speechAndScrollLoopTimeout = null;
+            }
+            if (currentSpokenUtterance) {
+                speechSynthesis.cancel();
+                currentSpokenUtterance = null;
+            }
+            isSpeaking = false;
+            clearInterval(scrollInterval); // Garante que a rolagem JS padrão (antiga) seja parada
+            missingNamesList.scrollTop = 0; // Volta ao topo
+        }
+
+        // A função principal que gerencia o ciclo de exibição e fala
+        function startSpeechAndScrollLoop() {
+            stopSpeechAndScrollLoop(); // Garante que não há loops ou falas antigas rodando
+
+            // Se a lista está vazia, fala a mensagem de parabéns e para
+            if (!currentAbsentCollaborators || currentAbsentCollaborators.length === 0) {
+                const congratsMessage = 'PARABÉNS, EQUIPE! TODOS REALIZARAM O TESTE DE PRONTIDÃO.';
+                // Garante que a mensagem de sucesso está visível (redundante, mas seguro)
+                if (!missingNamesList.querySelector('.success-message')) {
+                    missingNamesList.innerHTML = '';
+                    const successMessageDiv = document.createElement('div');
+                    successMessageDiv.className = 'success-message';
+                    successMessageDiv.innerHTML = congratsMessage;
+                    missingNamesList.appendChild(successMessageDiv);
+                }
+                missingCountSpan.textContent = 0;
+                lastUpdatedSpan.textContent = `Última atualização: Nenhum dado encontrado.`;
+                
+                speakText(congratsMessage, () => {
+                    // Define um timeout para repetir a mensagem de parabéns após algum tempo
+                    speechAndScrollLoopTimeout = setTimeout(startSpeechAndScrollLoop, 15000); // Repete a cada 15s
+                });
+                return;
+            }
+
+            // Se há colaboradores, inicia o ciclo de fala e rolagem
+            let nameIndex = 0; // Inicia sempre do primeiro nome quando o ciclo é (re)iniciado
+
+            // Fala o título da seção antes de começar a lista de nomes
+            speakText('Colaboradores que ainda precisam realizar o teste de prontidão.', () => {
+                // Após falar o título, inicia o processamento do primeiro item
+                speechAndScrollLoopTimeout = setTimeout(processNextItem, initialDisplayTime);
+            });
+            
+            function processNextItem() {
+                if (!currentAbsentCollaborators || currentAbsentCollaborators.length === 0) {
+                    // Se a lista esvaziou durante o ciclo, reinicia para a mensagem de parabéns
+                    startSpeechAndScrollLoop();
+                    return;
+                }
+
+                // Garante que o índice esteja dentro dos limites da lista
+                if (nameIndex >= currentAbsentCollaborators.length) {
+                    nameIndex = 0; // Volta ao início da lista
+                    // Pequeno atraso antes de reiniciar a lista inteira
+                    speechAndScrollLoopTimeout = setTimeout(processNextItem, pauseAtEnd); 
+                    return;
+                }
+
+                const currentItem = currentAbsentCollaborators[nameIndex];
+                const listItem = missingNamesList.children[nameIndex]; // Pega o <li> correspondente no DOM
+
+                if (listItem) {
+                    // Rola para o item atual para que fique visível
+                    listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                    let textToSpeak = currentItem.originalName;
+                    if (currentItem.justification) {
+                        textToSpeak += ` - Justificativa: ${currentItem.justification}`;
+                    }
+                    textToSpeak += ` da escala ${currentItem.scale}`; // Adiciona a escala ao que será falado
+
+                    // Fala o nome e aguarda o término, com velocidade de fala um pouco mais lenta
+                    speakText(textToSpeak, () => {
+                        nameIndex++;
+                        speechAndScrollLoopTimeout = setTimeout(processNextItem, 1000); // Pequena pausa antes do próximo nome
+                    }, 0.9); // Velocidade de fala ajustada para 0.9 (um pouco mais lenta)
+                } else {
+                    // Caso o item do DOM não seja encontrado (lista HTML desatualizada, por exemplo)
+                    console.warn("Elemento LI não encontrado para o índice:", nameIndex, ". Forçando recarregamento e reinício do ciclo.");
+                    // Força uma atualização da lista e reinicia o ciclo
+                    loadAbsentList(true); // Recarrega a lista forçadamente, o que chamará startSpeechAndScrollLoop novamente
+                    return;
+                }
+            }
+        }
+
+        // Modificar loadAbsentList para apenas carregar e atualizar o DOM
+        function loadAbsentList(forceRestartCycle = false) {
+            const savedListString = localStorage.getItem('finalAbsentList');
+            let dataHasChanged = false;
+            let previousAbsentListLength = currentAbsentCollaborators.length;
+
+            if (savedListString) {
+                try {
+                    const newData = JSON.parse(savedListString);
+                    const newAbsentList = newData.names || [];
+
+                    // Verifica se a lista de nomes mudou para evitar reinicialização desnecessária do ciclo
+                    if (JSON.stringify(newAbsentList) !== JSON.stringify(currentAbsentCollaborators)) {
+                        currentAbsentCollaborators = newAbsentList;
+                        dataHasChanged = true;
+                    }
+
+                    // Limpa a lista existente apenas se o conteúdo for realmente atualizado
+                    if (dataHasChanged || missingNamesList.children.length === 0) {
+                         missingNamesList.innerHTML = ''; 
+                    }
+                   
+
+                    if (currentAbsentCollaborators.length > 0) {
+                         if (dataHasChanged || missingNamesList.children.length === 0) { // Só recria os LIs se houver mudança ou estiver vazio
+                            currentAbsentCollaborators.forEach(item => {
+                                const li = document.createElement('li');
+                                let textContent = `${item.originalName} (Escala: ${item.scale})`;
+                                if (item.justification) {
+                                    textContent += ` - Justificativa: ${item.justification}`;
+                                }
+                                li.textContent = textContent;
+                                missingNamesList.appendChild(li);
+                            });
+                        }
+                        missingCountSpan.textContent = currentAbsentCollaborators.length;
+                    } else {
+                        // Mensagem de sucesso quando não há ausentes
+                        if (!missingNamesList.querySelector('.success-message')) { // Só adiciona se não estiver lá
+                            missingNamesList.innerHTML = '';
+                            const successMessageDiv = document.createElement('div');
+                            successMessageDiv.className = 'success-message';
+                            successMessageDiv.innerHTML = 'PARABÉNS, EQUIPE! TODOS REALIZARAM O TESTE DE PRONTIDÃO.';
+                            missingNamesList.appendChild(successMessageDiv);
+                        }
+                        missingCountSpan.textContent = 0;
+                    }
+
+                    if (newData.timestamp) {
+                        const date = new Date(newData.timestamp);
+                        lastUpdatedSpan.textContent = `Última atualização: ${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR')}`;
+                    } else {
+                        lastUpdatedSpan.textContent = `Última atualização: N/A`;
+                    }
+
+                } catch (e) {
+                    console.error("Erro ao carregar a lista de ausentes do LocalStorage:", e);
+                    missingNamesList.innerHTML = '<li>Erro ao carregar dados. Por favor, gere a lista novamente no aplicativo principal.</li>';
+                    missingCountSpan.textContent = 0;
+                    lastUpdatedSpan.textContent = `Última atualização: Erro de carregamento`;
+                    dataHasChanged = true; // Força reinício se houver erro
+                    currentAbsentCollaborators = []; // Limpa a lista em caso de erro
+                }
+            } else {
+                // Se LocalStorage estiver vazio (ou não tem 'finalAbsentList')
+                if (currentAbsentCollaborators.length > 0) { // Se a lista estava preenchida e agora está vazia, houve mudança
+                     dataHasChanged = true;
+                }
+                currentAbsentCollaborators = [];
+                if (!missingNamesList.querySelector('.success-message')) { // Só recria se não tiver a mensagem
+                    missingNamesList.innerHTML = '';
+                    const successMessageDiv = document.createElement('div');
+                    successMessageDiv.className = 'success-message';
+                    successMessageDiv.innerHTML = 'PARABÉNS, EQUIPE! TODOS REALIZARAM O TESTE DE PRONTIDÃO.';
+                    missingNamesList.appendChild(successMessageDiv);
+                }
+                missingCountSpan.textContent = 0;
+                lastUpdatedSpan.textContent = `Última atualização: Nenhum dado encontrado.`;
+            }
+
+            // Se os dados mudaram (ou seja, a lista de nomes é diferente) ou forceRestartCycle é verdadeiro,
+            // ou se a lista de colaboradores estava vazia e agora tem nomes, ou vice-versa, reinicia o loop.
+            if (dataHasChanged || forceRestartCycle || (previousAbsentListLength === 0 && currentAbsentCollaborators.length > 0) || (previousAbsentListLength > 0 && currentAbsentCollaborators.length === 0)) {
+                startSpeechAndScrollLoop();
+            }
+        }
+
+        window.addEventListener('load', () => {
+            const savedTheme = localStorage.getItem('selectedTheme') || 'default';
+            applyTheme(savedTheme);
+
+            // Carrega a lista inicial e inicia o ciclo de fala e rolagem
+            loadAbsentList();
+            // O setInterval agora apenas recarrega os dados, e o ciclo de fala/rolagem se autogerencia.
+            setInterval(loadAbsentList, 5000); 
+        });
+    </script>
+</body>
+</html>
