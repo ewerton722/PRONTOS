@@ -261,6 +261,7 @@
         let speechAndScrollLoopTimeout = null; // ID do timeout para controlar a execução
         let currentSpokenUtterance = null; // Para controlar a fala atual e poder parar
         let isSpeaking = false; // Flag para evitar que múltiplas falas se sobreponham
+        let hasSpokenCongrats = false; // NOVA VARIÁVEL: Para controlar se a mensagem de parabéns já foi falada
 
         const initialDisplayTime = 5000; // Tempo em milissegundos para a lista ficar estática antes de rolar/falar (5 segundos)
         const pauseBetweenNames = 1000; // Tempo em milissegundos para pausar entre nomes (1 segundo)
@@ -272,7 +273,7 @@
         // Função para carregar as vozes disponíveis e tentar selecionar uma
         function loadVoices() {
             const voices = speechSynthesis.getVoices();
-            // Tenta encontrar uma voz em português do Brasil que soe natural
+            // Tenta encontrar uma voz em português do Brasil que soa natural
             // Prioridade 1: Google português do Brasil (geralmente excelente)
             // Prioridade 2: Qualquer voz do Google em pt-BR
             // Prioridade 3: Qualquer voz em pt-BR
@@ -501,14 +502,19 @@
                 missingCountSpan.textContent = 0;
                 lastUpdatedSpan.textContent = `Última atualização: Nenhum dado encontrado.`;
                 
-                speakText(congratsMessage, () => {
-                    // Define um timeout para repetir a mensagem de parabéns após algum tempo
-                    speechAndScrollLoopTimeout = setTimeout(startSpeechAndScrollLoop, 15000); // Repete a cada 15s
-                }, 1.0, 1.0); // Velocidade e tom padrão para a mensagem de parabéns
-                return;
+                // *** MODIFICAÇÃO AQUI ***
+                // Fala a mensagem de parabéns APENAS SE AINDA NÃO FOI FALADA NESTA SESSÃO
+                if (!hasSpokenCongrats) {
+                    speakText(congratsMessage, () => {
+                        hasSpokenCongrats = true; // Marca que a mensagem de parabéns foi falada
+                        // Não há setTimeout aqui para repetir a fala
+                    }, 1.0, 1.0); // Velocidade e tom padrão para a mensagem de parabéns
+                }
+                return; // Importante: retorna para não iniciar o loop de nomes
             }
 
-            // Se há colaboradores, inicia o ciclo de fala e rolagem
+            // Se há colaboradores, reinicia a flag de congrats e inicia o ciclo de fala e rolagem
+            hasSpokenCongrats = false; // Reseta a flag se a lista não está vazia
             let nameIndex = 0; // Inicia sempre do primeiro nome quando o ciclo é (re)iniciado
 
             // Fala o título da seção antes de começar a lista de nomes
